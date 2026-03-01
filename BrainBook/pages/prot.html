@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainBook - Tu espacio de aprendizaje</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" type="image/x-icon" href="../img/re.jpg">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --dark-gray: #1a1a1a;
+            --green: #00ff88;
+            --green-dark: #00cc6a;
+            --green-glow: rgba(0, 255, 136, 0.2);
+            --white: #ffffff;
+            --off-white: #f5f5f5;
+            --text-gray: #b0b0b0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, var(--green-glow) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, var(--green-glow) 0%, transparent 50%);
+            opacity: 0.3;
+            z-index: 0;
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+            padding: 1.5rem 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 1000;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--white);
+            letter-spacing: -1px;
+            position: relative;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        .logo::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background: var(--green);
+            transition: width 0.4s ease;
+        }
+
+        .logo:hover::after {
+            width: 100%;
+        }
+
+        .navlinks {
+            display: flex;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        .navlinks a {
+            font-family: 'DM Sans', sans-serif;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s ease;
+            animation: fadeIn 0.8s ease-out both;
+        }
+
+        .navlinks a:nth-child(1) {
+            animation-delay: 0.3s;
+        }
+
+        .navlinks a:nth-child(2) {
+            animation-delay: 0.4s;
+        }
+
+        .navlinks a:nth-child(3) {
+            animation-delay: 0.5s;
+        }
+
+        .navlinks a:nth-child(4) {
+            animation-delay: 0.6s;
+        }
+
+        .navlinks a:nth-child(5) {
+            animation-delay: 0.7s;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .navlinks a::before {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 2px;
+            background: var(--green);
+            transition: width 0.3s ease;
+        }
+
+        .navlinks a:hover {
+            color: var(--green);
+        }
+
+        .navlinks a:hover::before {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            padding: 6rem 3rem 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            line-height: 1.1;
+            background: linear-gradient(135deg, var(--white) 0%, var(--green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: slideUp 1s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Content Section */
+        .content {
+            position: relative;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 3rem 4rem;
+            z-index: 1;
+        }
+
+        .text-block {
+            margin-bottom: 3rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .text-block p {
+            font-size: 1.1rem;
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        .text-block strong {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        /* How it Works Section */
+        .how-it-works {
+            background: var(--dark-gray);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 20px;
+            padding: 4rem;
+            margin: 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .how-it-works::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .how-it-works h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--green);
+            position: relative;
+            z-index: 1;
+        }
+
+        .how-it-works p {
+            font-size: 1.1rem;
+            color: var(--text-gray);
+            margin-bottom: 1rem;
+            line-height: 1.8;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Gallery Container */
+        .gallery-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            margin-top: 4rem;
+        }
+
+        .gallery-text {
+            animation: fadeInLeft 1s ease-out;
+        }
+
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            animation: fadeInRight 1s ease-out;
+        }
+
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .gallery-item {
+            position: relative;
+            aspect-ratio: 4/3;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .gallery-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, var(--green-glow) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: 1;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-8px);
+            border-color: var(--green);
+            box-shadow: 0 20px 40px rgba(0, 255, 136, 0.3);
+        }
+
+        .gallery-item:hover::before {
+            opacity: 1;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.7);
+            transition: all 0.4s ease;
+        }
+
+        .gallery-item:hover img {
+            filter: brightness(1);
+            transform: scale(1.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .navbar {
+                padding: 1.5rem 2rem;
+            }
+
+            .navlinks {
+                gap: 1.5rem;
+            }
+
+            .navlinks a {
+                font-size: 0.85rem;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .gallery-container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 1.5rem;
+                padding: 1.5rem;
+            }
+
+            .navlinks {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 1rem;
+            }
+
+            .hero {
+                padding: 4rem 2rem 3rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .content {
+                padding: 2rem;
+            }
+
+            .how-it-works {
+                padding: 2.5rem;
+            }
+
+            .how-it-works h2 {
+                font-size: 2rem;
+            }
+
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="logo">BrainBook</div>
+
+        <div class="navlinks">
+            <a href="/filosofia.html">Pensamiento Filosófico</a>
+            <a href="ciencias_sociales.html">Ciencias Sociales</a>
+            <a href="matematicas.html">Matemáticas</a>
+            <a href="cultura_digital.html">Cultura Digital</a>
+            <a href="ingles.html">Lengua Extranjera</a>
+            <a href="Resumen_inteligente.html">BrainBook Agent</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>¿Quiénes somos?</h1>
+    </section>
+
+    <!-- Main Content -->
+    <section class="content">
+        <div class="text-block">
+            <p>BrainBook, es una página creada por y para estudiantes, con el fin de ayudar a que los mismos estudiantes
+                logren potenciar sus conocimientos, mejorar su rendimiento académico y hacer del estudio una experiencia
+                más accesible, interactiva y motivadora. Sabemos que cada estudiante aprende de manera diferente. Por
+                eso, BrainBook está pensada especialmente para aquellos a quienes se les dificulta estudiar por cuenta
+                propia, para los más tímidos que prefieren aprender en un entorno tranquilo y sin presiones, o
+                simplemente para quienes no quieren quedarse atrás y desean reforzar sus conocimientos.</p>
+
+            <p>En <strong>BrainBook</strong>, creemos que todos los estudiantes tienen el potencial de alcanzar grandes
+                cosas, y queremos ser el apoyo que los impulse a lograrlo. Esta es tu página, un espacio hecho <strong>a
+                    tu medida</strong>, donde aprender puede ser más fácil, dinámico y accesible.</p>
+        </div>
+
+        <!-- How it Works Section -->
+        <div class="how-it-works">
+            <h2>¿Cómo funciona?</h2>
+
+            <p>El funcionamiento de la página es <strong>sencillo e intuitivo</strong>, casi como abrir un cuaderno bien
+                organizado.</p>
+
+            <p>En la parte superior del sitio encontrarás un <strong>menú principal</strong> con todas las
+                <strong>materias disponibles</strong>. Al seleccionar una de ellas, se te dirigirá a una <strong>página
+                    principal de materia</strong>, donde podrás encontrar información sobre la materia seleccionada.
+                Justo en la parte superior encontrarás un listado de <strong>temas</strong>, en el cual podrás
+                seleccionar el que desees estudiar. Una vez elegido, se abrirá su contenido de forma práctica.</p>
+
+            <p>Para cada sección se incluye un botón de <strong>inicio</strong>, que permitirá regresar en un instante a
+                esta página, la página principal. Además, dentro de cada tema verás el botón <strong>"Volver
+                    a"</strong>, que te llevará al apartado general de la materia que hayas seleccionado.</p>
+
+            <p>Todo está diseñado para que navegar sea más fácil, rápido y sin perderte entre pestañas emergentes ni
+                menús confusos. La idea es que puedas enfocarte por completo en lo realmente importante: aprender.</p>
+        </div>
+
+        <!-- Gallery Container -->
+        <div class="gallery-container">
+            <div class="gallery-text">
+                <h2
+                    style="font-family: 'Syne', sans-serif; font-size: 2rem; color: var(--green); margin-bottom: 1.5rem;">
+                    Navegación Visual</h2>
+                <p style="color: var(--text-gray); font-size: 1.1rem; line-height: 1.8;">Explora cómo la interfaz de
+                    BrainBook facilita tu aprendizaje con un diseño claro y accesible. Cada elemento está pensado para
+                    que tu experiencia sea fluida y sin complicaciones.</p>
+            </div>
+
+            <div class="gallery">
+                <div class="gallery-item">
+                    <img src="img/func.png" alt="Menú principal">
+                </div>
+                <div class="gallery-item">
+                    <img src="img/func2.png" alt="Selección de materia">
+                </div>
+                <div class="gallery-item">
+                    <img src="img/func4.png" alt="Listado de temas">
+                </div>
+                <div class="gallery-item">
+                    <img src="img/func5.png" alt="Opciones de navegación">
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+
+</html>
