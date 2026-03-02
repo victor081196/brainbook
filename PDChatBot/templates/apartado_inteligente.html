@@ -701,92 +701,88 @@ body {
   }
 }
 
-    /* ==== API Config UI ==== */
-.api-config {
-  max-width: 800px;
-  margin: 0 auto 10px auto;
-  display: flex;
-  justify-content: flex-end;
-  position: relative;
+  /* ===== Sidebar Config ===== */
+.sidebar-config {
+    margin-top: auto; /* lo empuja hasta abajo */
+    padding: 12px 8px;
+    border-top: 1px solid #2a2a2a;
 }
 
-.api-toggle {
-  background: #2a2a2a;
-  border: 1px solid #404040;
-  color: #e8e8e8;
-  padding: 8px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all .2s;
-  font-size: 13px;
-}
-.api-toggle:hover { background:#404040; }
-
-.api-panel {
-  position: absolute;
-  right: 0;
-  bottom: 44px;
-  width: min(680px, calc(100vw - 24px));
-  background: #121212;
-  border: 1px solid #2a2a2a;
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.45);
-  z-index: 50;
+.sidebar-config-btn {
+    width: 100%;
+    padding: 10px;
+    background: #2a2a2a;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    color: #e8e8e8;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all .2s;
 }
 
-.api-panel.hidden { display: none; }
-
-.api-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.sidebar-config-btn:hover {
+    background: #404040;
 }
 
-.api-input {
-  flex: 1;
-  background: #1a1a1a;
-  border: 1px solid #404040;
-  color: #e8e8e8;
-  padding: 10px 12px;
-  border-radius: 12px;
-  outline: none;
-  font-size: 13px;
-}
-.api-input::placeholder { color:#808080; }
-.api-input:focus { border-color: #32cd32; }
-
-.api-btn {
-  background: #2a2a2a;
-  border: 1px solid #404040;
-  color: #e8e8e8;
-  padding: 10px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all .2s;
-  white-space: nowrap;
-}
-.api-btn:hover { background:#404040; }
-.api-btn.danger:hover { border-color:#ff6666; }
-
-.api-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 10px;
-  align-items: center;
-  flex-wrap: wrap;
+.sidebar-config-panel {
+    margin-top: 10px;
+    background: #121212;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 10px;
 }
 
-.api-status {
-  color: #808080;
-  font-size: 12px;
+.sidebar-config-panel.hidden {
+    display: none;
 }
 
-@media (max-width: 520px) {
-  .api-row { flex-wrap: wrap; }
-  .api-btn { width: 100%; }
+.sidebar-config-panel input {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: 8px;
+    color: #e8e8e8;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.sidebar-config-panel input:focus {
+    border-color: #32cd32;
+    outline: none;
+}
+
+.sidebar-config-actions {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.sidebar-config-actions button {
+    flex: 1;
+    background: #2a2a2a;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 6px;
+    color: #e8e8e8;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.sidebar-config-actions button:hover {
+    background: #404040;
+}
+
+.sidebar-config-actions .danger:hover {
+    border-color: #ff6666;
+}
+
+.sidebar-config-status {
+    font-size: 11px;
+    color: #808080;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 </style>
 <body>
@@ -881,6 +877,25 @@ body {
             <div class="recent-chats">
                 <div class="recent-chats-title">Chats recientes</div>
                 <div id="chatHistory"></div>
+                <!-- Config API abajo -->
+                <div class="sidebar-config">
+                    <button id="apiToggle" class="sidebar-config-btn">⚙️ Configurar API</button>
+            
+                    <div id="apiPanel" class="sidebar-config-panel hidden">
+                        <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini" />
+            
+                        <div class="sidebar-config-actions">
+                            <button id="saveApiKeyBtn">Guardar</button>
+                            <button id="toggleApiKeyBtn">Ver</button>
+                            <button id="clearApiKeyBtn" class="danger">Borrar</button>
+                        </div>
+            
+                        <div class="sidebar-config-status">
+                            <span id="apiKeyStatus">API key: no configurada</span>
+                            <span id="modelStatus">Modelo: (sin seleccionar)</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -897,26 +912,7 @@ body {
                     <h1>Brainbook Agent</h1>
                 </div>
                 <div id="messages"></div>
-                <!-- Config API (colapsable) -->
-                    <div class="api-config">
-                      <button type="button" id="apiToggle" class="api-toggle" aria-expanded="false">
-                        ⚙️ Config
-                      </button>
                     
-                      <div id="apiPanel" class="api-panel hidden">
-                        <div class="api-row">
-                          <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini" class="api-input" />
-                          <button id="saveApiKeyBtn" type="button" class="api-btn">Guardar</button>
-                          <button id="toggleApiKeyBtn" type="button" class="api-btn">Ver</button>
-                        </div>
-                    
-                        <div class="api-meta">
-                          <span id="apiKeyStatus" class="api-status">API key: no configurada</span>
-                          <span id="modelStatus" class="api-status">Modelo: (sin seleccionar)</span>
-                          <button id="clearApiKeyBtn" type="button" class="api-btn danger">Borrar</button>
-                        </div>
-                      </div>
-                    </div>
             </div>
 
             <div class="input-area">
@@ -1386,6 +1382,7 @@ body {
 
 
 </html>
+
 
 
 
