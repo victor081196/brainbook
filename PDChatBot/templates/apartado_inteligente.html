@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainbook Agent</title>
+</head>
+<style>
+    * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+  background: #1a1a1a;
+  color: #e8e8e8;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  display: flex;
+  height: calc(100vh - 115px);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #0f0f0f;
+  border-right: 1px solid #2a2a2a;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+.sidebar.hidden {
+  transform: translateX(-100%);
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.new-chat-btn {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  color: #e8e8e8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.new-chat-btn:hover {
+  background: #2a2a2a;
+}
+
+.recent-chats {
+  padding: 16px 8px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.recent-chats-title {
+  font-size: 11px;
+  color: #808080;
+  padding: 8px 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-item {
+  padding: 12px 12px;
+  margin: 4px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-item:hover {
+  background: #2a2a2a;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.toggle-sidebar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  color: #e8e8e8;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  z-index: 10;
+  transition: all 0.2s;
+  display: none;
+}
+
+.toggle-sidebar:hover {
+  background: #404040;
+}
+
+.toggle-sidebar:active {
+  transform: scale(0.95);
+}
+
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.welcome-screen h1 {
+  font-size: 48px;
+  font-weight: 400;
+  margin-bottom: 60px;
+  background: linear-gradient(90deg,
+      #32CD32 0%,
+      #4EE44E 25%,
+      #66F266 50%,
+      #8CFA8C 75%,
+      #B7FFB7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.message {
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 12px;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.user {
+  background: #2a2a2a;
+  margin-left: auto;
+  max-width: 80%;
+}
+
+.message.assistant {
+  background: transparent;
+  max-width: 100%;
+}
+
+.message-label {
+  font-size: 12px;
+  color: #808080;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.message-content {
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* Input Area */
+.input-area {
+  padding: 20px;
+  background: #1a1a1a;
+}
+
+.input-container {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.gradient-border {
+  position: absolute;
+  inset: -1px;
+  border-radius: 28px;
+  padding: 1px;
+  background: linear-gradient(
+  90deg,
+  #32CD32 0%,
+  #4EE44E 25%,
+  #66F266 50%,
+  #8CFA8C 75%,
+  #B7FFB7 100%
+);
+
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #2a2a2a;
+  border-radius: 28px;
+  padding: 4px 4px 4px 20px;
+  position: relative;
+}
+
+#prompt {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #e8e8e8;
+  font-size: 15px;
+  padding: 12px 0;
+  outline: none;
+  resize: none;
+  max-height: 200px;
+  font-family: inherit;
+}
+
+#prompt::placeholder {
+  color: #808080;
+}
+
+.emoji-btn {
+  background: transparent;
+  border: none;
+  color: #808080;
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 8px;
+  font-size: 20px;
+  transition: transform 0.2s;
+}
+
+.emoji-btn:hover {
+  transform: scale(1.1);
+}
+
+.send-btn {
+  background: #e8e8e8;
+  border: none;
+  color: #1a1a1a;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  width: 36px;
+  height: 36px;
+}
+
+.send-btn:hover {
+  background: #fff;
+  transform: scale(1.05);
+}
+
+.send-btn:disabled {
+  background: #404040;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+/* Loading animation */
+.loading {
+  display: inline-flex;
+  gap: 4px;
+  padding: 20px;
+}
+
+.loading span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    height: calc(100vh - 140px);
+  }
+
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 100;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar.hidden {
+    transform: translateX(-100%);
+  }
+
+  .toggle-sidebar {
+    display: block;
+  }
+
+  .welcome-screen h1 {
+    font-size: 32px;
+    padding: 0 20px;
+  }
+
+  .chat-area {
+    padding: 60px 12px 12px 12px;
+  }
+
+  .message {
+    margin: 12px 0;
+    padding: 16px;
+    font-size: 14px;
+  }
+
+  .message.user {
+    max-width: 90%;
+  }
+
+  .input-area {
+    padding: 12px;
+  }
+
+  .input-wrapper {
+    padding: 4px 4px 4px 16px;
+  }
+
+  #prompt {
+    font-size: 14px;
+    padding: 10px 0;
+  }
+
+  .navbar {
+    padding: 12px 20px;
+    flex-wrap: wrap;
+  }
+
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .logo, .logo2 {
+    font-size: 22px;
+  }
+
+  .back-to-home {
+    padding: 10px 20px;
+  }
+
+  .btn-home {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 280px;
+  }
+
+  .welcome-screen h1 {
+    font-size: 24px;
+  }
+
+  .new-chat-btn {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  .chat-item {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .message-label {
+    font-size: 11px;
+  }
+
+  .message-content {
+    font-size: 14px;
+  }
+
+  #prompt {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  .toggle-sidebar {
+    display: none;
+  }
+}
+
+/* Landscape móviles */
+@media (max-width: 768px) and (orientation: landscape) {
+  .container {
+    height: calc(100vh - 100px);
+  }
+
+  .chat-area {
+    padding: 50px 12px 8px 12px;
+  }
+
+  .input-area {
+    padding: 8px;
+  }
+
+  .welcome-screen h1 {
+    font-size: 28px;
+    margin-bottom: 30px;
+  }
+}
+
+/* Tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+  }
+
+  .welcome-screen h1 {
+    font-size: 40px;
+  }
+
+  .chat-area {
+    padding: 20px 16px;
+  }
+}
+
+/* Pantallas grandes */
+@media (min-width: 1440px) {
+  .input-container {
+    max-width: 900px;
+  }
+
+  .chat-area {
+    padding: 20px 60px;
+  }
+
+  .message {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Navegación*/
+.navbar {
+  background: linear-gradient(135deg, #171717 0%, #1a1a1a 100%);
+  border-bottom: 2px solid #2a2a2a;
+  padding: 15px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.logo {
+  font-size: 26px;
+  font-weight: bold;
+  color: #ffffff;
+  font-family: 'Franklin Gothic Medium', Arial, sans-serif;
+}
+
+.logo2 {
+  font-size: 26px;
+  font-weight: bold;
+  color: #32cd32;
+  font-family: 'Franklin Gothic Medium', Arial, sans-serif;
+}
+
+.nav-links {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  color: #e0e0e0;
+  text-decoration: none;
+  padding: 12px 20px;
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+  background-color: #2a2a2a;
+  color: #32cd32;
+  transform: translateY(-2px);
+}
+
+.nav-link.highlight {
+  background: linear-gradient(135deg, #32cd32 0%, #28a428 100%);
+  color: #121212;
+  font-weight: 600;
+}
+
+.nav-link.highlight:hover {
+  background: linear-gradient(135deg, #28a428 0%, #228b22 100%);
+  color: #121212;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(50, 205, 50, 0.3);
+}
+
+/* Menú desplegable */
+.dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #1f1f1f;
+  min-width: 200px;
+  border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  padding: 8px 0;
+  margin-top: 5px;
+  border: 1px solid #2a2a2a;
+}
+
+.nav-item:hover .dropdown,
+.dropdown:hover {
+  display: block;
+}
+
+.dropdown a {
+  color: #d0d0d0;
+  text-decoration: none;
+  padding: 10px 18px;
+  display: block;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.dropdown a:hover {
+  background-color: #2a2a2a;
+  color: #32cd32;
+}
+
+/* Botón de regreso al inicio */
+.back-to-home {
+  max-width: 100%;
+  padding: 12px 30px;
+}
+
+.btn-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #e8e8e8;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: 1px solid #404040;
+}
+
+.btn-home:hover {
+  background: #2a2a2a;
+  color: #32cd32;
+  border-color: #32cd32;
+}
+/* Responsive adicional para navbar en móviles */
+@media (max-width: 480px) {
+  .navbar {
+    padding: 10px 15px;
+  }
+
+  .nav-links {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .logo, .logo2 {
+    font-size: 20px;
+  }
+
+  .dropdown {
+    min-width: 160px;
+  }
+
+  .dropdown a {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .container {
+    height: calc(100vh - 160px);
+  }
+}
+</style>
+<body>
+    <!--Barra de Navegación Principal-->
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="logo">Brain</div>
+            <div class="logo2">Book</div>
+        </div>
+        <div class="back-to-home">
+            <a href="../pages/index.html" class="btn-home">← Volver al Inicio</a>
+        </div>
+        <div class="nav-links">
+            <div class="nav-item">
+                <a href="../pages/pensamiento_filosofico.html" class="nav-link">Pensamiento Filosófico</a>
+                <div class="dropdown">
+                    <a href="#">Ética</a>
+                    <a href="#">Etica</a>
+                    <a href="#">Etica</a>
+                    <a href="#">Etica</a>
+                </div>
+            </div>
+
+            <div class="nav-item">
+                <a href="../pages/ciencias_sociales.html" class="nav-link">Ciencias Sociales</a>
+                <div class=" dropdown">
+                    <a href="#">Historia</a>
+                    <a href="#">Geografía</a>
+                    <a href="#">Sociología</a>
+                    <a href="#">Economía</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <a href="../pages/matematicas.html" class="nav-link">Matemáticas</a>
+            <div class="dropdown">
+                <a href="#">Álgebra</a>
+                <a href="#">Geometría</a>
+                <a href="#">Cálculo</a>
+                <a href="#">Estadística</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <a href="../pages/Cultura_digital.html" class="nav-link">Cultura Digital</a>
+            <div class="dropdown">
+                <a href="#">Programación</a>
+                <a href="#">Diseño Web</a>
+                <a href="#">Seguridad Digital</a>
+                <a href="#">Multimedia</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <a href="../../pages/ingles.html" class="nav-link">Lengua Extranjera</a>
+            <div class="dropdown">
+                <a href="#">To Be</a>
+                <a href="#">Present Simple</a>
+                <a href="#">Past Simple</a>
+                <a href="#">Future Simple</a>
+            </div>
+        </div>
+
+        <div class="nav-item">
+            <a href="../PDChatBot/templates/apartado_inteligente.html" class="nav-link highlight">BrainBook Agent</a>
+        </div>
+        </div>
+    </nav>
+
+    <!-- Botón de regreso al inicio -->
+
+
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Nuevo chat
+                </button>
+            </div>
+            <div class="recent-chats">
+                <div class="recent-chats-title">Chats recientes</div>
+                <div id="chatHistory"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="toggle-sidebar" id="toggleSidebar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+            </button>
+
+            <div class="chat-area" id="chatArea">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <h1>Brainbook Agent</h1>
+                </div>
+                <div id="messages"></div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <div class="gradient-border"></div>
+                    <form id="chatForm" class="input-wrapper">
+                        <!--<button type="button" class="emoji-btn">😊</button>-->
+                        <textarea id="prompt" name="prompt" placeholder="Pregunta lo que quieras..." rows="1"
+                            required></textarea>
+                        <button type="submit" class="send-btn" id="sendBtn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebar = document.getElementById('toggleSidebar');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const chatForm = document.getElementById('chatForm');
+        const promptInput = document.getElementById('prompt');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatArea = document.getElementById('chatArea');
+        const messagesDiv = document.getElementById('messages');
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatHistory = document.getElementById('chatHistory');
+
+        let currentChatId = null;
+        let chatSessions = {};
+        let allChatsHistory = []; // Para almacenar todos los chats
+
+        // Toggle sidebar
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+        });
+
+        // New chat
+        newChatBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/new-chat', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    // Guardar el chat actual antes de crear uno nuevo
+                    if (currentChatId && messagesDiv.children.length > 0) {
+                        saveCurrentChatToHistory();
+                    }
+                    createNewChat();
+                }
+            } catch (error) {
+                console.error('Error creating new chat:', error);
+                createNewChat();
+            }
+        });
+
+        // Auto-resize textarea
+        promptInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        });
+
+        // Form submit
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) return;
+
+            // Hide welcome screen
+            welcomeScreen.style.display = 'none';
+
+            // Create new chat if needed
+            if (!currentChatId) {
+                currentChatId = Date.now().toString();
+                chatSessions[currentChatId] = [];
+
+                // Añadir al historial visual
+                const firstMsg = prompt.substring(0, 40).replace(/<[^>]*>/g, '');
+                addChatToHistory(currentChatId, firstMsg + (prompt.length > 40 ? '...' : ''));
+            }
+
+            // Add user message
+            addMessage('user', prompt);
+
+            // Clear input
+            promptInput.value = '';
+            promptInput.style.height = 'auto';
+
+            // Disable input
+            sendBtn.disabled = true;
+            promptInput.disabled = true;
+
+            // Show loading
+            const loadingId = 'loading-' + Date.now();
+            addLoadingMessage(loadingId);
+
+            // Send to server
+            try {
+                const formData = new FormData();
+                formData.append('prompt', prompt);
+
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Remove loading
+                removeLoadingMessage(loadingId);
+
+                if (response.redirected || response.ok) {
+                    // Fetch the response from history
+                    const historyResponse = await fetch('/api/history');
+                    const history = await historyResponse.json();
+
+                    // Get last assistant message
+                    if (history.length > 0) {
+                        const lastMessage = history[history.length - 1];
+                        if (lastMessage.role === 'assistant') {
+                            addMessageWithoutSave('assistant', lastMessage.content);
+
+                            // Guardar en el chat actual
+                            if (!chatSessions[currentChatId]) {
+                                chatSessions[currentChatId] = [];
+                            }
+                            chatSessions[currentChatId].push({ role: 'user', content: prompt });
+                            chatSessions[currentChatId].push({ role: 'assistant', content: lastMessage.content });
+                        }
+                    }
+                } else {
+                    addMessage('assistant', 'Error al procesar la solicitud.');
+                }
+            } catch (error) {
+                removeLoadingMessage(loadingId);
+                addMessage('assistant', 'Error de conexión: ' + error.message);
+            } finally {
+                sendBtn.disabled = false;
+                promptInput.disabled = false;
+                promptInput.focus();
+            }
+        });
+
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = role === 'user' ? 'Tú' : 'Brainbook Agent';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = content;
+
+            messageDiv.appendChild(label);
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function addLoadingMessage(id) {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant';
+            loadingDiv.id = id;
+            loadingDiv.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+            messagesDiv.appendChild(loadingDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function removeLoadingMessage(id) {
+            const loadingDiv = document.getElementById(id);
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+
+        function createNewChat() {
+            // Clear all messages
+            messagesDiv.innerHTML = '';
+            welcomeScreen.style.display = 'flex';
+            currentChatId = null;
+            promptInput.focus();
+        }
+
+        function saveCurrentChatToHistory() {
+            const messages = [];
+            const messageElements = messagesDiv.querySelectorAll('.message');
+
+            messageElements.forEach(msg => {
+                const role = msg.classList.contains('user') ? 'user' : 'assistant';
+                const content = msg.querySelector('.message-content').innerHTML;
+                messages.push({ role, content });
+            });
+
+            if (messages.length > 0) {
+                chatSessions[currentChatId] = messages;
+                allChatsHistory.push({
+                    id: currentChatId,
+                    messages: messages,
+                    title: messages[0].content.substring(0, 40).replace(/<[^>]*>/g, '') + '...'
+                });
+            }
+        }
+
+        function addChatToHistory(chatId, title) {
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            chatItem.textContent = title;
+            chatItem.dataset.chatId = chatId;
+            chatItem.onclick = () => {
+                loadChat(chatId);
+                // Cerrar sidebar en móviles después de seleccionar
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.add('hidden');
+                }
+            };
+            chatHistory.insertBefore(chatItem, chatHistory.firstChild);
+        }
+
+        function loadChat(chatId) {
+            currentChatId = chatId;
+            messagesDiv.innerHTML = '';
+            welcomeScreen.style.display = 'none';
+
+            const messages = chatSessions[chatId] || [];
+            messages.forEach(msg => addMessageWithoutSave(msg.role, msg.content));
+        }
+
+        // Load history from server on page load
+        window.addEventListener('load', () => {
+            promptInput.focus();
+            loadHistoryFromServer();
+
+            // Ocultar sidebar en móviles al cargar
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('hidden');
+            }
+        });
+
+        // Cerrar sidebar al hacer clic fuera en móviles
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !toggleSidebar.contains(e.target) && !sidebar.classList.contains('hidden')) {
+                    sidebar.classList.add('hidden');
+                }
+            }
+        });
+
+        async function loadHistoryFromServer() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+
+                if (history && history.length > 0) {
+                    welcomeScreen.style.display = 'none';
+                    currentChatId = 'current-session';
+                    chatSessions[currentChatId] = history;
+
+                    history.forEach(msg => {
+                        addMessageWithoutSave(msg.role, msg.content);
+                    });
+
+                    // Añadir al historial de la sidebar
+                    const firstUserMsg = history.find(m => m.role === 'user');
+                    if (firstUserMsg) {
+                        const title = firstUserMsg.content.substring(0, 40).replace(/<[^>]*>/g, '');
+                        addChatToHistory(currentChatId, title + (firstUserMsg.content.length > 40 ? '...' : ''));
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function addMessageWithoutSave(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const label = document.createElement('div');
+            label.className = 'message-label';
+            label.textContent = role === 'user' ? 'Tú' : 'Brainbook Agent';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.innerHTML = content;
+
+            messageDiv.appendChild(label);
+            messageDiv.appendChild(contentDiv);
+            messagesDiv.appendChild(messageDiv);
+
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+    </script>
+</body>
+
+</html>
