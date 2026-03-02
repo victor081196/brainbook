@@ -883,83 +883,53 @@ body {
 
         // Form submit
         chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const prompt = promptInput.value.trim();
+    e.preventDefault();
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
 
-            if (!prompt) return;
+    welcomeScreen.style.display = 'none';
+    addMessage('user', prompt);
 
-            // Hide welcome screen
-            welcomeScreen.style.display = 'none';
+    promptInput.value = '';
+    sendBtn.disabled = true;
+    promptInput.disabled = true;
 
-            // Create new chat if needed
-            if (!currentChatId) {
-                currentChatId = Date.now().toString();
-                chatSessions[currentChatId] = [];
+    const loadingId = 'loading-' + Date.now();
+    addLoadingMessage(loadingId);
 
-                // Añadir al historial visual
-                const firstMsg = prompt.substring(0, 40).replace(/<[^>]*>/g, '');
-                addChatToHistory(currentChatId, firstMsg + (prompt.length > 40 ? '...' : ''));
-            }
-
-            // Add user message
-            addMessage('user', prompt);
-
-            // Clear input
-            promptInput.value = '';
-            promptInput.style.height = 'auto';
-
-            // Disable input
-            sendBtn.disabled = true;
-            promptInput.disabled = true;
-
-            // Show loading
-            const loadingId = 'loading-' + Date.now();
-            addLoadingMessage(loadingId);
-
-            // Send to server
-            try {
-                const formData = new FormData();
-                formData.append('prompt', prompt);
-
-                const response = await fetch(`${BASE}/predict`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                // Remove loading
-                removeLoadingMessage(loadingId);
-
-                if (response.redirected || response.ok) {
-                    // Fetch the response from history
-                    const historyResponse = await fetch(`${BASE}/api/history`);
-                    const history = await historyResponse.json();
-
-                    // Get last assistant message
-                    if (history.length > 0) {
-                        const lastMessage = history[history.length - 1];
-                        if (lastMessage.role === 'assistant') {
-                            addMessageWithoutSave('assistant', lastMessage.content);
-
-                            // Guardar en el chat actual
-                            if (!chatSessions[currentChatId]) {
-                                chatSessions[currentChatId] = [];
-                            }
-                            chatSessions[currentChatId].push({ role: 'user', content: prompt });
-                            chatSessions[currentChatId].push({ role: 'assistant', content: lastMessage.content });
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [{ text: prompt }]
                         }
-                    }
-                } else {
-                    addMessage('assistant', 'Error al procesar la solicitud.');
-                }
-            } catch (error) {
-                removeLoadingMessage(loadingId);
-                addMessage('assistant', 'Error de conexión: ' + error.message);
-            } finally {
-                sendBtn.disabled = false;
-                promptInput.disabled = false;
-                promptInput.focus();
+                    ]
+                })
             }
-        });
+        );
+
+        const data = await response.json();
+        removeLoadingMessage(loadingId);
+
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta";
+
+        addMessage('assistant', reply);
+
+    } catch (error) {
+        removeLoadingMessage(loadingId);
+        addMessage('assistant', "Error: " + error.message);
+    }
+
+    sendBtn.disabled = false;
+    promptInput.disabled = false;
+});
 
         function addMessage(role, content) {
             const messageDiv = document.createElement('div');
@@ -1118,6 +1088,7 @@ body {
 
 
 </html>
+
 
 
 
