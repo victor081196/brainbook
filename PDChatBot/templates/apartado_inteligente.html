@@ -813,6 +813,19 @@ body {
 
             <div class="input-area">
                 <div class="input-container">
+                    <div class="api-key-bar" style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+  <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini aquí"
+         style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #404040; background:#121212; color:#e8e8e8; outline:none;" />
+  <button id="saveApiKeyBtn" type="button"
+          style="padding:10px 14px; border-radius:10px; border:1px solid #404040; background:#2a2a2a; color:#e8e8e8; cursor:pointer;">
+    Guardar
+  </button>
+  <button id="toggleApiKeyBtn" type="button"
+          style="padding:10px 14px; border-radius:10px; border:1px solid #404040; background:#2a2a2a; color:#e8e8e8; cursor:pointer;">
+    Ver
+  </button>
+</div>
+<div id="apiKeyStatus" style="font-size:12px; color:#808080; margin-bottom:8px;"></div>
                     <div class="gradient-border"></div>
                     <form id="chatForm" class="input-wrapper">
                         <!--<button type="button" class="emoji-btn">😊</button>-->
@@ -835,15 +848,11 @@ body {
   // =========================
   // CONFIG
   // =========================
-  const GEMINI_API_KEY = "PON_AQUI_TU_API_KEY";
-
-  // Usa el nombre EXACTO con "models/..." (puedes cambiarlo luego según ListModels)
-  // Ejemplos comunes:
-  // const GEMINI_MODEL = "models/gemini-1.5-flash";
-  // const GEMINI_MODEL = "models/gemini-1.5-pro";
+  // Modelo (si te falla, cambia a "models/gemini-1.5-pro" o lista modelos)
   const GEMINI_MODEL = "models/gemini-1.5-flash";
 
   // Storage keys
+  const LS_API_KEY = "bb_gemini_api_key_v1";
   const LS_ALL_CHATS = "bb_all_chats_v1";
   const LS_ACTIVE_ID = "bb_active_chat_id_v1";
 
@@ -861,6 +870,12 @@ body {
   const welcomeScreen = document.getElementById("welcomeScreen");
   const chatHistory = document.getElementById("chatHistory");
 
+  // API key UI
+  const apiKeyInput = document.getElementById("apiKeyInput");
+  const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
+  const toggleApiKeyBtn = document.getElementById("toggleApiKeyBtn");
+  const apiKeyStatus = document.getElementById("apiKeyStatus");
+
   // =========================
   // State
   // =========================
@@ -868,10 +883,27 @@ body {
   let currentChatId = loadActiveChatId() || null;
 
   // =========================
-  // UI helpers
+  // Helpers
   // =========================
+  function escapeHtmlToSafeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
   function scrollToBottom() {
     chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function showWelcome(show) {
+    welcomeScreen.style.display = show ? "flex" : "none";
+  }
+
+  function clearMessagesUI() {
+    messagesDiv.innerHTML = "";
   }
 
   function addMessage(role, content) {
@@ -889,7 +921,6 @@ body {
     messageDiv.appendChild(label);
     messageDiv.appendChild(contentDiv);
     messagesDiv.appendChild(messageDiv);
-
     scrollToBottom();
   }
 
@@ -897,8 +928,7 @@ body {
     const loadingDiv = document.createElement("div");
     loadingDiv.className = "message assistant";
     loadingDiv.id = id;
-    loadingDiv.innerHTML =
-      '<div class="loading"><span></span><span></span><span></span></div>';
+    loadingDiv.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
     messagesDiv.appendChild(loadingDiv);
     scrollToBottom();
   }
@@ -908,26 +938,35 @@ body {
     if (el) el.remove();
   }
 
-  function clearMessagesUI() {
-    messagesDiv.innerHTML = "";
+  // =========================
+  // API Key storage + UI
+  // =========================
+  function getApiKey() {
+    return (localStorage.getItem(LS_API_KEY) || "").trim();
   }
 
-  function showWelcome(show) {
-    welcomeScreen.style.display = show ? "flex" : "none";
+  function setApiKey(key) {
+    const k = String(key || "").trim();
+    if (!k) {
+      localStorage.removeItem(LS_API_KEY);
+      return;
+    }
+    localStorage.setItem(LS_API_KEY, k);
   }
 
-  // Evita inyectar HTML (seguridad básica)
-  function escapeHtmlToSafeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
+  function updateApiKeyStatus() {
+    const k = getApiKey();
+    if (!k) {
+      apiKeyStatus.textContent = "API key: no configurada (pégala y presiona Guardar).";
+      apiKeyStatus.style.color = "#ffb4b4";
+      return;
+    }
+    apiKeyStatus.textContent = "API key: configurada ✅";
+    apiKeyStatus.style.color = "#b7ffb7";
   }
 
   // =========================
-  // Storage
+  // Chats storage
   // =========================
   function loadAllChats() {
     try {
@@ -955,24 +994,6 @@ body {
   // =========================
   // Chat management
   // =========================
-  function ensureCurrentChat() {
-    if (currentChatId) return currentChatId;
-
-    const id = String(Date.now());
-    currentChatId = id;
-    saveActiveChatId(id);
-
-    const newChat = {
-      id,
-      title: "Nuevo chat",
-      messages: [],
-    };
-    allChats.unshift(newChat);
-    saveAllChats();
-    renderSidebar();
-    return id;
-  }
-
   function getChatById(id) {
     return allChats.find((c) => c.id === id) || null;
   }
@@ -984,11 +1005,35 @@ body {
     chat.title = clean.substring(0, 40) + (clean.length > 40 ? "..." : "");
   }
 
+  function renderSidebar() {
+    chatHistory.innerHTML = "";
+    for (const chat of allChats) {
+      const chatItem = document.createElement("div");
+      chatItem.className = "chat-item";
+      chatItem.textContent = chat.title || "Chat";
+      chatItem.dataset.chatId = chat.id;
+      chatItem.onclick = () => loadChatToUI(chat.id);
+      chatHistory.appendChild(chatItem);
+    }
+  }
+
+  function ensureCurrentChat() {
+    if (currentChatId) return currentChatId;
+
+    const id = String(Date.now());
+    currentChatId = id;
+    saveActiveChatId(id);
+
+    const newChat = { id, title: "Nuevo chat", messages: [] };
+    allChats.unshift(newChat);
+    saveAllChats();
+    renderSidebar();
+    return id;
+  }
+
   function startNewChat() {
-    // si el chat actual tiene mensajes, ya está guardado en allChats (porque guardamos en cada msg)
     currentChatId = null;
     saveActiveChatId(null);
-
     clearMessagesUI();
     showWelcome(true);
     promptInput.focus();
@@ -1012,31 +1057,12 @@ body {
   }
 
   // =========================
-  // Sidebar rendering
-  // =========================
-  function renderSidebar() {
-    chatHistory.innerHTML = "";
-
-    for (const chat of allChats) {
-      const chatItem = document.createElement("div");
-      chatItem.className = "chat-item";
-      chatItem.textContent = chat.title || "Chat";
-      chatItem.dataset.chatId = chat.id;
-      chatItem.onclick = () => loadChatToUI(chat.id);
-      chatHistory.appendChild(chatItem);
-    }
-  }
-
-  // =========================
   // Gemini API
   // =========================
-  async function geminiGenerate(text, contextMessages) {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("PON_AQUI")) {
-      throw new Error("Falta tu API key de Gemini.");
-    }
+  async function geminiGenerate(promptText, contextMessages) {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("No has configurado tu API key (arriba).");
 
-    // Construimos contexto (últimos N mensajes) para que responda con memoria básica
-    // Gemini espera: contents: [{role:"user"/"model", parts:[{text:"..."}]}]
     const contents = [];
     for (const m of contextMessages) {
       if (m.role === "assistant") {
@@ -1045,59 +1071,47 @@ body {
         contents.push({ role: "user", parts: [{ text: m.content }] });
       }
     }
-    contents.push({ role: "user", parts: [{ text }] });
+    contents.push({ role: "user", parts: [{ text: promptText }] });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
-      GEMINI_API_KEY
-    )}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 512,
-        },
-      }),
+        generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
+      })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      const msg =
-        data?.error?.message ||
-        `Error HTTP ${res.status} al llamar a Gemini.`;
+      const msg = data?.error?.message || `Error HTTP ${res.status}`;
       throw new Error(msg);
     }
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sin respuesta del modelo.";
-
-    return reply;
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta del modelo.";
   }
 
-  // (Opcional) listar modelos disponibles para tu key
+  // (Opcional) listar modelos disponibles
   async function listModelsToConsole() {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
-      GEMINI_API_KEY
-    )}`;
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      console.warn("Primero guarda una API key.");
+      return;
+    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
     const res = await fetch(url);
     const data = await res.json();
-    console.log("MODELOS DISPONIBLES:", data);
-    (data.models || []).forEach((m) =>
-      console.log(m.name, m.supportedGenerationMethods)
-    );
+    console.log("MODELOS DISPONIBLES:");
+    (data.models || []).forEach(m => console.log(m.name, m.supportedGenerationMethods));
   }
 
   // =========================
   // Events
   // =========================
-  toggleSidebar.addEventListener("click", () => {
-    sidebar.classList.toggle("hidden");
-  });
+  toggleSidebar.addEventListener("click", () => sidebar.classList.toggle("hidden"));
 
   // auto-resize textarea
   promptInput.addEventListener("input", function () {
@@ -1106,11 +1120,22 @@ body {
   });
 
   // Nuevo chat
-  newChatBtn.addEventListener("click", () => {
-    startNewChat();
+  newChatBtn.addEventListener("click", () => startNewChat());
+
+  // Guardar key
+  saveApiKeyBtn.addEventListener("click", () => {
+    setApiKey(apiKeyInput.value);
+    apiKeyInput.value = "";
+    updateApiKeyStatus();
   });
 
-  // Enviar mensaje
+  // Ver/ocultar key
+  toggleApiKeyBtn.addEventListener("click", () => {
+    apiKeyInput.type = apiKeyInput.type === "password" ? "text" : "password";
+    toggleApiKeyBtn.textContent = apiKeyInput.type === "password" ? "Ver" : "Ocultar";
+  });
+
+  // Submit chat
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = promptInput.value.trim();
@@ -1121,7 +1146,6 @@ body {
     const id = ensureCurrentChat();
     const chat = getChatById(id);
 
-    // Guardar y mostrar user
     chat.messages.push({ role: "user", content: prompt });
     setChatTitleFromFirstUserMessage(chat);
     saveAllChats();
@@ -1129,7 +1153,6 @@ body {
 
     addMessage("user", prompt);
 
-    // limpiar input + deshabilitar
     promptInput.value = "";
     promptInput.style.height = "auto";
     sendBtn.disabled = true;
@@ -1139,14 +1162,11 @@ body {
     addLoadingMessage(loadingId);
 
     try {
-      // contexto: últimos 12 mensajes para no gastar tanto
       const context = chat.messages.slice(-12);
-
       const reply = await geminiGenerate(prompt, context);
 
       removeLoadingMessage(loadingId);
 
-      // Guardar y mostrar assistant
       chat.messages.push({ role: "assistant", content: reply });
       saveAllChats();
 
@@ -1161,14 +1181,10 @@ body {
     }
   });
 
-  // Cerrar sidebar al hacer click fuera en móvil
+  // Click fuera (móvil)
   document.addEventListener("click", (e) => {
     if (window.innerWidth <= 768) {
-      if (
-        !sidebar.contains(e.target) &&
-        !toggleSidebar.contains(e.target) &&
-        !sidebar.classList.contains("hidden")
-      ) {
+      if (!sidebar.contains(e.target) && !toggleSidebar.contains(e.target) && !sidebar.classList.contains("hidden")) {
         sidebar.classList.add("hidden");
       }
     }
@@ -1178,6 +1194,9 @@ body {
   // Init
   // =========================
   window.addEventListener("load", () => {
+    // Cargar estado UI api key
+    updateApiKeyStatus();
+
     renderSidebar();
 
     if (currentChatId) {
@@ -1188,14 +1207,10 @@ body {
       startNewChat();
     }
 
-    // Si quieres, descomenta para ver en consola los modelos disponibles:
+    // Si quieres ver modelos en consola, descomenta:
     // listModelsToConsole();
 
-    // Ocultar sidebar en móviles al cargar
-    if (window.innerWidth <= 768) {
-      sidebar.classList.add("hidden");
-    }
-
+    if (window.innerWidth <= 768) sidebar.classList.add("hidden");
     promptInput.focus();
   });
 </script>
@@ -1203,6 +1218,7 @@ body {
 
 
 </html>
+
 
 
 
