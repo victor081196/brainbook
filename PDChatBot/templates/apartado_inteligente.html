@@ -32,7 +32,7 @@ body {
   border-right: 1px solid #2a2a2a;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
+  height: 100%;
 }
 
 .sidebar.hidden {
@@ -66,7 +66,7 @@ body {
 .recent-chats {
   padding: 16px 8px;
   overflow-y: auto;
-  flex: 1;
+  flex: 1; /* Esto hace que empuje el config hasta abajo */
 }
 
 .recent-chats-title {
@@ -877,23 +877,25 @@ body {
             <div class="recent-chats">
                 <div class="recent-chats-title">Chats recientes</div>
                 <div id="chatHistory"></div>
-                <!-- Config API abajo -->
-                <div class="sidebar-config">
-                    <button id="apiToggle" class="sidebar-config-btn">⚙️ Configurar API</button>
-            
-                    <div id="apiPanel" class="sidebar-config-panel hidden">
-                        <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini" />
-            
-                        <div class="sidebar-config-actions">
-                            <button id="saveApiKeyBtn">Guardar</button>
-                            <button id="toggleApiKeyBtn">Ver</button>
-                            <button id="clearApiKeyBtn" class="danger">Borrar</button>
-                        </div>
-            
-                        <div class="sidebar-config-status">
-                            <span id="apiKeyStatus">API key: no configurada</span>
-                            <span id="modelStatus">Modelo: (sin seleccionar)</span>
-                        </div>
+            </div>
+            <!-- CONFIG PEGADO ABAJO -->
+            <div class="sidebar-config">
+                <button id="apiToggle" class="sidebar-config-btn">
+                    ⚙️ Configurar API
+                </button>
+        
+                <div id="apiPanel" class="sidebar-config-panel hidden">
+                    <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini" />
+        
+                    <div class="sidebar-config-actions">
+                        <button id="saveApiKeyBtn">Guardar</button>
+                        <button id="toggleApiKeyBtn">Ver</button>
+                        <button id="clearApiKeyBtn" class="danger">Borrar</button>
+                    </div>
+        
+                    <div class="sidebar-config-status">
+                        <span id="apiKeyStatus">API key: no configurada</span>
+                        <span id="modelStatus">Modelo: (sin seleccionar)</span>
                     </div>
                 </div>
             </div>
@@ -1382,6 +1384,7 @@ body {
 
 
 </html>
+
 
 
 
