@@ -831,265 +831,379 @@ body {
         </div>
     </div>
 
-    <script>
-        // Elements
-        const sidebar = document.getElementById('sidebar');
-        const toggleSidebar = document.getElementById('toggleSidebar');
-        const newChatBtn = document.getElementById('newChatBtn');
-        const chatForm = document.getElementById('chatForm');
-        const promptInput = document.getElementById('prompt');
-        const sendBtn = document.getElementById('sendBtn');
-        const chatArea = document.getElementById('chatArea');
-        const messagesDiv = document.getElementById('messages');
-        const welcomeScreen = document.getElementById('welcomeScreen');
-        const chatHistory = document.getElementById('chatHistory');
+   <script>
+  // =========================
+  // CONFIG
+  // =========================
+  const GEMINI_API_KEY = "PON_AQUI_TU_API_KEY";
 
-        let currentChatId = null;
-        let chatSessions = {};
-        let allChatsHistory = []; // Para almacenar todos los chats
+  // Usa el nombre EXACTO con "models/..." (puedes cambiarlo luego según ListModels)
+  // Ejemplos comunes:
+  // const GEMINI_MODEL = "models/gemini-1.5-flash";
+  // const GEMINI_MODEL = "models/gemini-1.5-pro";
+  const GEMINI_MODEL = "models/gemini-1.5-flash";
 
-        const BASE = "/PDChatBot";
+  // Storage keys
+  const LS_ALL_CHATS = "bb_all_chats_v1";
+  const LS_ACTIVE_ID = "bb_active_chat_id_v1";
 
-        // Toggle sidebar
-        toggleSidebar.addEventListener('click', () => {
-            sidebar.classList.toggle('hidden');
-        });
+  // =========================
+  // Elements
+  // =========================
+  const sidebar = document.getElementById("sidebar");
+  const toggleSidebar = document.getElementById("toggleSidebar");
+  const newChatBtn = document.getElementById("newChatBtn");
+  const chatForm = document.getElementById("chatForm");
+  const promptInput = document.getElementById("prompt");
+  const sendBtn = document.getElementById("sendBtn");
+  const chatArea = document.getElementById("chatArea");
+  const messagesDiv = document.getElementById("messages");
+  const welcomeScreen = document.getElementById("welcomeScreen");
+  const chatHistory = document.getElementById("chatHistory");
 
-        // New chat
-        newChatBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch(`${BASE}/api/history`, {
-                    method: 'POST'
-                });
+  // =========================
+  // State
+  // =========================
+  let allChats = loadAllChats(); // [{id,title,messages:[{role,content}]}]
+  let currentChatId = loadActiveChatId() || null;
 
-                if (response.ok) {
-                    // Guardar el chat actual antes de crear uno nuevo
-                    if (currentChatId && messagesDiv.children.length > 0) {
-                        saveCurrentChatToHistory();
-                    }
-                    createNewChat();
-                }
-            } catch (error) {
-                console.error('Error creating new chat:', error);
-                createNewChat();
-            }
-        });
+  // =========================
+  // UI helpers
+  // =========================
+  function scrollToBottom() {
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
 
-        // Auto-resize textarea
-        promptInput.addEventListener('input', function () {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-        });
+  function addMessage(role, content) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${role}`;
 
-        const GEMINI_API_KEY = "AIzaSyBB1i7oj0VJee3rxzf9sU0T5soqbW__O_E";
+    const label = document.createElement("div");
+    label.className = "message-label";
+    label.textContent = role === "user" ? "Tú" : "Brainbook Agent";
 
-        // Form submit
-        chatForm.addEventListener('submit', async (e) => {
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "message-content";
+    contentDiv.innerHTML = escapeHtmlToSafeHtml(content).replace(/\n/g, "<br>");
+
+    messageDiv.appendChild(label);
+    messageDiv.appendChild(contentDiv);
+    messagesDiv.appendChild(messageDiv);
+
+    scrollToBottom();
+  }
+
+  function addLoadingMessage(id) {
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "message assistant";
+    loadingDiv.id = id;
+    loadingDiv.innerHTML =
+      '<div class="loading"><span></span><span></span><span></span></div>';
+    messagesDiv.appendChild(loadingDiv);
+    scrollToBottom();
+  }
+
+  function removeLoadingMessage(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
+  function clearMessagesUI() {
+    messagesDiv.innerHTML = "";
+  }
+
+  function showWelcome(show) {
+    welcomeScreen.style.display = show ? "flex" : "none";
+  }
+
+  // Evita inyectar HTML (seguridad básica)
+  function escapeHtmlToSafeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // =========================
+  // Storage
+  // =========================
+  function loadAllChats() {
+    try {
+      const raw = localStorage.getItem(LS_ALL_CHATS);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveAllChats() {
+    localStorage.setItem(LS_ALL_CHATS, JSON.stringify(allChats));
+  }
+
+  function loadActiveChatId() {
+    return localStorage.getItem(LS_ACTIVE_ID);
+  }
+
+  function saveActiveChatId(id) {
+    if (id) localStorage.setItem(LS_ACTIVE_ID, id);
+    else localStorage.removeItem(LS_ACTIVE_ID);
+  }
+
+  // =========================
+  // Chat management
+  // =========================
+  function ensureCurrentChat() {
+    if (currentChatId) return currentChatId;
+
+    const id = String(Date.now());
+    currentChatId = id;
+    saveActiveChatId(id);
+
+    const newChat = {
+      id,
+      title: "Nuevo chat",
+      messages: [],
+    };
+    allChats.unshift(newChat);
+    saveAllChats();
+    renderSidebar();
+    return id;
+  }
+
+  function getChatById(id) {
+    return allChats.find((c) => c.id === id) || null;
+  }
+
+  function setChatTitleFromFirstUserMessage(chat) {
+    const firstUser = chat.messages.find((m) => m.role === "user");
+    if (!firstUser) return;
+    const clean = String(firstUser.content).replace(/<[^>]*>/g, "");
+    chat.title = clean.substring(0, 40) + (clean.length > 40 ? "..." : "");
+  }
+
+  function startNewChat() {
+    // si el chat actual tiene mensajes, ya está guardado en allChats (porque guardamos en cada msg)
+    currentChatId = null;
+    saveActiveChatId(null);
+
+    clearMessagesUI();
+    showWelcome(true);
+    promptInput.focus();
+  }
+
+  function loadChatToUI(chatId) {
+    const chat = getChatById(chatId);
+    if (!chat) return;
+
+    currentChatId = chatId;
+    saveActiveChatId(chatId);
+
+    clearMessagesUI();
+    showWelcome(chat.messages.length === 0);
+
+    for (const msg of chat.messages) {
+      addMessage(msg.role, msg.content);
+    }
+
+    if (window.innerWidth <= 768) sidebar.classList.add("hidden");
+  }
+
+  // =========================
+  // Sidebar rendering
+  // =========================
+  function renderSidebar() {
+    chatHistory.innerHTML = "";
+
+    for (const chat of allChats) {
+      const chatItem = document.createElement("div");
+      chatItem.className = "chat-item";
+      chatItem.textContent = chat.title || "Chat";
+      chatItem.dataset.chatId = chat.id;
+      chatItem.onclick = () => loadChatToUI(chat.id);
+      chatHistory.appendChild(chatItem);
+    }
+  }
+
+  // =========================
+  // Gemini API
+  // =========================
+  async function geminiGenerate(text, contextMessages) {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("PON_AQUI")) {
+      throw new Error("Falta tu API key de Gemini.");
+    }
+
+    // Construimos contexto (últimos N mensajes) para que responda con memoria básica
+    // Gemini espera: contents: [{role:"user"/"model", parts:[{text:"..."}]}]
+    const contents = [];
+    for (const m of contextMessages) {
+      if (m.role === "assistant") {
+        contents.push({ role: "model", parts: [{ text: m.content }] });
+      } else {
+        contents.push({ role: "user", parts: [{ text: m.content }] });
+      }
+    }
+    contents.push({ role: "user", parts: [{ text }] });
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(
+      GEMINI_API_KEY
+    )}`;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 512,
+        },
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const msg =
+        data?.error?.message ||
+        `Error HTTP ${res.status} al llamar a Gemini.`;
+      throw new Error(msg);
+    }
+
+    const reply =
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sin respuesta del modelo.";
+
+    return reply;
+  }
+
+  // (Opcional) listar modelos disponibles para tu key
+  async function listModelsToConsole() {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+      GEMINI_API_KEY
+    )}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    console.log("MODELOS DISPONIBLES:", data);
+    (data.models || []).forEach((m) =>
+      console.log(m.name, m.supportedGenerationMethods)
+    );
+  }
+
+  // =========================
+  // Events
+  // =========================
+  toggleSidebar.addEventListener("click", () => {
+    sidebar.classList.toggle("hidden");
+  });
+
+  // auto-resize textarea
+  promptInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 200) + "px";
+  });
+
+  // Nuevo chat
+  newChatBtn.addEventListener("click", () => {
+    startNewChat();
+  });
+
+  // Enviar mensaje
+  chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const prompt = promptInput.value.trim();
     if (!prompt) return;
 
-    welcomeScreen.style.display = 'none';
-    addMessage('user', prompt);
+    showWelcome(false);
 
-    promptInput.value = '';
+    const id = ensureCurrentChat();
+    const chat = getChatById(id);
+
+    // Guardar y mostrar user
+    chat.messages.push({ role: "user", content: prompt });
+    setChatTitleFromFirstUserMessage(chat);
+    saveAllChats();
+    renderSidebar();
+
+    addMessage("user", prompt);
+
+    // limpiar input + deshabilitar
+    promptInput.value = "";
+    promptInput.style.height = "auto";
     sendBtn.disabled = true;
     promptInput.disabled = true;
 
-    const loadingId = 'loading-' + Date.now();
+    const loadingId = "loading-" + Date.now();
     addLoadingMessage(loadingId);
 
     try {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [{ text: prompt }]
-                        }
-                    ]
-                })
-            }
-        );
+      // contexto: últimos 12 mensajes para no gastar tanto
+      const context = chat.messages.slice(-12);
 
-        const data = await response.json();
-        removeLoadingMessage(loadingId);
+      const reply = await geminiGenerate(prompt, context);
 
-        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta";
+      removeLoadingMessage(loadingId);
 
-        addMessage('assistant', reply);
+      // Guardar y mostrar assistant
+      chat.messages.push({ role: "assistant", content: reply });
+      saveAllChats();
 
-    } catch (error) {
-        removeLoadingMessage(loadingId);
-        addMessage('assistant', "Error: " + error.message);
+      addMessage("assistant", reply);
+    } catch (err) {
+      removeLoadingMessage(loadingId);
+      addMessage("assistant", "Error: " + (err?.message || String(err)));
+    } finally {
+      sendBtn.disabled = false;
+      promptInput.disabled = false;
+      promptInput.focus();
+    }
+  });
+
+  // Cerrar sidebar al hacer click fuera en móvil
+  document.addEventListener("click", (e) => {
+    if (window.innerWidth <= 768) {
+      if (
+        !sidebar.contains(e.target) &&
+        !toggleSidebar.contains(e.target) &&
+        !sidebar.classList.contains("hidden")
+      ) {
+        sidebar.classList.add("hidden");
+      }
+    }
+  });
+
+  // =========================
+  // Init
+  // =========================
+  window.addEventListener("load", () => {
+    renderSidebar();
+
+    if (currentChatId) {
+      const chat = getChatById(currentChatId);
+      if (chat) loadChatToUI(currentChatId);
+      else startNewChat();
+    } else {
+      startNewChat();
     }
 
-    sendBtn.disabled = false;
-    promptInput.disabled = false;
-});
+    // Si quieres, descomenta para ver en consola los modelos disponibles:
+    // listModelsToConsole();
 
-        function addMessage(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
+    // Ocultar sidebar en móviles al cargar
+    if (window.innerWidth <= 768) {
+      sidebar.classList.add("hidden");
+    }
 
-            const label = document.createElement('div');
-            label.className = 'message-label';
-            label.textContent = role === 'user' ? 'Tú' : 'Brainbook Agent';
-
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.innerHTML = content;
-
-            messageDiv.appendChild(label);
-            messageDiv.appendChild(contentDiv);
-            messagesDiv.appendChild(messageDiv);
-
-            // Scroll to bottom
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function addLoadingMessage(id) {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'message assistant';
-            loadingDiv.id = id;
-            loadingDiv.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
-            messagesDiv.appendChild(loadingDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function removeLoadingMessage(id) {
-            const loadingDiv = document.getElementById(id);
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
-        }
-
-        function createNewChat() {
-            // Clear all messages
-            messagesDiv.innerHTML = '';
-            welcomeScreen.style.display = 'flex';
-            currentChatId = null;
-            promptInput.focus();
-        }
-
-        function saveCurrentChatToHistory() {
-            const messages = [];
-            const messageElements = messagesDiv.querySelectorAll('.message');
-
-            messageElements.forEach(msg => {
-                const role = msg.classList.contains('user') ? 'user' : 'assistant';
-                const content = msg.querySelector('.message-content').innerHTML;
-                messages.push({ role, content });
-            });
-
-            if (messages.length > 0) {
-                chatSessions[currentChatId] = messages;
-                allChatsHistory.push({
-                    id: currentChatId,
-                    messages: messages,
-                    title: messages[0].content.substring(0, 40).replace(/<[^>]*>/g, '') + '...'
-                });
-            }
-        }
-
-        function addChatToHistory(chatId, title) {
-            const chatItem = document.createElement('div');
-            chatItem.className = 'chat-item';
-            chatItem.textContent = title;
-            chatItem.dataset.chatId = chatId;
-            chatItem.onclick = () => {
-                loadChat(chatId);
-                // Cerrar sidebar en móviles después de seleccionar
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.add('hidden');
-                }
-            };
-            chatHistory.insertBefore(chatItem, chatHistory.firstChild);
-        }
-
-        function loadChat(chatId) {
-            currentChatId = chatId;
-            messagesDiv.innerHTML = '';
-            welcomeScreen.style.display = 'none';
-
-            const messages = chatSessions[chatId] || [];
-            messages.forEach(msg => addMessageWithoutSave(msg.role, msg.content));
-        }
-
-        // Load history from server on page load
-        window.addEventListener('load', () => {
-            promptInput.focus();
-            loadHistoryFromServer();
-
-            // Ocultar sidebar en móviles al cargar
-            if (window.innerWidth <= 768) {
-                sidebar.classList.add('hidden');
-            }
-        });
-
-        // Cerrar sidebar al hacer clic fuera en móviles
-        document.addEventListener('click', (e) => {
-            if (window.innerWidth <= 768) {
-                if (!sidebar.contains(e.target) && !toggleSidebar.contains(e.target) && !sidebar.classList.contains('hidden')) {
-                    sidebar.classList.add('hidden');
-                }
-            }
-        });
-
-        async function loadHistoryFromServer() {
-            try {
-                const response = await fetch(`${BASE}/api/history`);
-                const history = await response.json();
-
-                if (history && history.length > 0) {
-                    welcomeScreen.style.display = 'none';
-                    currentChatId = 'current-session';
-                    chatSessions[currentChatId] = history;
-
-                    history.forEach(msg => {
-                        addMessageWithoutSave(msg.role, msg.content);
-                    });
-
-                    // Añadir al historial de la sidebar
-                    const firstUserMsg = history.find(m => m.role === 'user');
-                    if (firstUserMsg) {
-                        const title = firstUserMsg.content.substring(0, 40).replace(/<[^>]*>/g, '');
-                        addChatToHistory(currentChatId, title + (firstUserMsg.content.length > 40 ? '...' : ''));
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading history:', error);
-            }
-        }
-
-        function addMessageWithoutSave(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-
-            const label = document.createElement('div');
-            label.className = 'message-label';
-            label.textContent = role === 'user' ? 'Tú' : 'Brainbook Agent';
-
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.innerHTML = content;
-
-            messageDiv.appendChild(label);
-            messageDiv.appendChild(contentDiv);
-            messagesDiv.appendChild(messageDiv);
-
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-    </script>
+    promptInput.focus();
+  });
+</script>
 </body>
 
 
 </html>
+
 
 
 
