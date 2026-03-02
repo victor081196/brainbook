@@ -12,8 +12,9 @@ import markdown
 import requests
 from dotenv import load_dotenv
 
-from flask import Flask, request, render_template, session, redirect, url_for, jsonify
+from flask import Flask, request, render_template, session, jsonify
 from flask_session import Session
+from flask_cors import CORS  # ✅ FALTABA ESTE IMPORT
 
 # ==============================
 # CARGAR VARIABLES DE ENTORNO
@@ -25,96 +26,87 @@ load_dotenv()
 # ==============================
 app = Flask(__name__)
 
+# ✅ CORS para que el front en Netlify pueda hablar con Render
+# Si luego quieres permitir más dominios, agrega aquí.
 CORS(app, resources={r"/*": {"origins": ["https://brainbook1.netlify.app"]}})
 
-app.secret_key = "clave_secreta_para_sesiones"
-app.config["SESSION_TYPE"] = "filesystem"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "clave_secreta_para_sesiones")
 
-# Directorio temporal para la sesión (evita problemas en OneDrive)
+# Sesiones en filesystem (Render sí lo soporta, pero puede resetearse en redeploy)
+app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = tempfile.gettempdir()
+app.config["SESSION_PERMANENT"] = False
 
 Session(app)
 
 # ==============================
 # CONFIGURAR GEMINI
 # ==============================
-try:
-    genai.configure(api_key=os.environ["API_KEY"])
-except KeyError:
-    print("ADVERTENCIA: Falta API_KEY en el archivo .env")
+API_KEY = os.environ.get("API_KEY")
+if not API_KEY:
+    print("ADVERTENCIA: Falta API_KEY en variables de entorno (Render) o .env")
+else:
+    genai.configure(api_key=API_KEY)
 
 model = genai.GenerativeModel("gemini-2.5-flash")
+MAX_HISTORY = 10  # límite del historial (pares user+assistant)
 
-MAX_HISTORY = 10  # límite del historial
+# ==============================
+# HEALTH CHECK (para probar en Render)
+# ==============================
+@app.get("/health")
+def health():
+    return jsonify({"ok": True})
 
 # ==============================
 # RUTA PRINCIPAL (GET)
 # ==============================
-@app.route("/")
+@app.get("/")
 def home():
-    # Obtener el último mensaje si existe
-    last_prompt = session.pop("last_prompt", None)
-    last_response = session.pop("last_response", None)
-    error = session.pop("error", None)
-    
-    # Obtener historial completo
+    # Si el template no existe en producción, esto fallará (500).
+    # Asegúrate de tener: PDChatBot/templates/apartado_inteligente.html
     history = session.get("history", [])
-    
-    return render_template("apartado_inteligente.html",
-                           last_prompt=last_prompt,
-                           last_response=last_response,
-                           history=history,
-                           error=error)
+    return render_template("apartado_inteligente.html", history=history)
 
 # ==============================
 # RUTA DE PREDICCIÓN (POST)
 # ==============================
-@app.route("/predict", methods=["POST"])
+@app.post("/predict")
 def predict():
-    prompt = request.form.get("prompt")
+    prompt = (request.form.get("prompt") or "").strip()
 
     if not prompt:
-        session["error"] = "Por favor, ingresa un texto válido."
-        return jsonify({"error": "Texto inválido"}), 400
+        return jsonify({"error": "Por favor, ingresa un texto válido."}), 400
 
     try:
         # Generar respuesta de Gemini
-        response = model.generate_content(prompt).text
-        output_html = markdown.markdown(response)
+        response_text = model.generate_content(prompt).text
+        output_html = markdown.markdown(response_text)
 
         # Guardar en historial
         history = session.get("history", [])
-        history.append({
-            "role": "user",
-            "content": prompt
-        })
-        history.append({
-            "role": "assistant",
-            "content": output_html
-        })
+        history.append({"role": "user", "content": prompt})
+        history.append({"role": "assistant", "content": output_html})
 
         # Limitar historial
         if len(history) > MAX_HISTORY * 2:
-            history = history[-MAX_HISTORY * 2:]
-        
+            history = history[-MAX_HISTORY * 2 :]
+
         session["history"] = history
         session.modified = True
 
+        # Tu front puede usar esto directamente, sin ir a /api/history si quieres
         return jsonify({"success": True, "response": output_html})
 
     except requests.exceptions.RequestException as e:
-        error_msg = f"Error al conectarse a Gemini: {e}"
-        session["error"] = error_msg
-        return jsonify({"error": error_msg}), 500
+        return jsonify({"error": f"Error al conectarse a Gemini: {e}"}), 500
     except Exception as e:
-        error_msg = f"Error inesperado: {e}"
-        session["error"] = error_msg
-        return jsonify({"error": error_msg}), 500
+        return jsonify({"error": f"Error inesperado: {e}"}), 500
 
 # ==============================
 # RUTA PARA OBTENER HISTORIAL (API)
 # ==============================
-@app.route("/api/history", methods=["GET"])
+@app.get("/api/history")
 def get_history():
     history = session.get("history", [])
     return jsonify(history)
@@ -122,16 +114,15 @@ def get_history():
 # ==============================
 # RUTA PARA LIMPIAR CHAT
 # ==============================
-@app.route("/api/new-chat", methods=["POST"])
+@app.post("/api/new-chat")
 def new_chat():
     session["history"] = []
-    session.pop("last_prompt", None)
-    session.pop("last_response", None)
+    session.modified = True
     return jsonify({"success": True})
 
 # ==============================
-# EJECUCIÓN
+# EJECUCIÓN LOCAL
 # ==============================
 if __name__ == "__main__":
-
-     app.run()
+    # En Render NO se usa esto; Render usa gunicorn.
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
