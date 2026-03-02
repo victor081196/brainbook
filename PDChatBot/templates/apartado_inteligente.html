@@ -848,6 +848,8 @@ body {
         let chatSessions = {};
         let allChatsHistory = []; // Para almacenar todos los chats
 
+        const BASE = '/pdchatbot';
+
         // Toggle sidebar
         toggleSidebar.addEventListener('click', () => {
             sidebar.classList.toggle('hidden');
@@ -856,7 +858,7 @@ body {
         // New chat
         newChatBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('/api/new-chat', {
+                const response = await fetch(`${BASE}/api/history`, {
                     method: 'POST'
                 });
 
@@ -919,7 +921,7 @@ body {
                 const formData = new FormData();
                 formData.append('prompt', prompt);
 
-                const response = await fetch('/predict', {
+                const response = await fetch(`${BASE}/predict`, {
                     method: 'POST',
                     body: formData
                 });
@@ -929,7 +931,7 @@ body {
 
                 if (response.redirected || response.ok) {
                     // Fetch the response from history
-                    const historyResponse = await fetch('/api/history');
+                    const historyResponse = await fetch(`${BASE}/api/history`);
                     const history = await historyResponse.json();
 
                     // Get last assistant message
@@ -1069,7 +1071,7 @@ body {
 
         async function loadHistoryFromServer() {
             try {
-                const response = await fetch('/api/history');
+                const response = await fetch(`${BASE}/api/history`);
                 const history = await response.json();
 
                 if (history && history.length > 0) {
@@ -1116,6 +1118,7 @@ body {
 
 
 </html>
+
 
 
 
