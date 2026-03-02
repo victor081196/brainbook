@@ -2,7 +2,13 @@
   publish = "."
 
 [[redirects]]
-  from = "/PDChatBot/api/history"
-  to = "https://httpbin.org/json"
+  from = "/PDChatBot/api/*"
+  to = "https://brainbook-chat.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/PDChatBot/predict"
+  to = "https://brainbook-chat.onrender.com/predict"
   status = 200
   force = true
