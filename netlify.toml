@@ -1,15 +1,8 @@
 [build]
   publish = "."
 
-# Proxy API -> Render (manteniendo /pdchatbot delante)
 [[redirects]]
-  from = "/PDChatBot/api/*"
-  to = "https://brainbook-chat.onrender.com/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/PDChatBot/predict"
-  to = "https://brainbook-chat.onrender.com/predict"
+  from = "/PDChatBot/api/history"
+  to = "https://httpbin.org/json"
   status = 200
   force = true
