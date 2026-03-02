@@ -25,6 +25,8 @@ load_dotenv()
 # ==============================
 app = Flask(__name__)
 
+CORS(app, resources={r"/*": {"origins": ["https://brainbook1.netlify.app"]}})
+
 app.secret_key = "clave_secreta_para_sesiones"
 app.config["SESSION_TYPE"] = "filesystem"
 
@@ -131,4 +133,5 @@ def new_chat():
 # EJECUCIÓN
 # ==============================
 if __name__ == "__main__":
-    app.run(debug=True)
+
+     app.run()
