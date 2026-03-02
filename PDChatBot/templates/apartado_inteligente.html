@@ -700,6 +700,94 @@ body {
     height: calc(100vh - 160px);
   }
 }
+
+    /* ==== API Config UI ==== */
+.api-config {
+  max-width: 800px;
+  margin: 0 auto 10px auto;
+  display: flex;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.api-toggle {
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  color: #e8e8e8;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  font-size: 13px;
+}
+.api-toggle:hover { background:#404040; }
+
+.api-panel {
+  position: absolute;
+  right: 0;
+  bottom: 44px;
+  width: min(680px, calc(100vw - 24px));
+  background: #121212;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  z-index: 50;
+}
+
+.api-panel.hidden { display: none; }
+
+.api-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.api-input {
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  color: #e8e8e8;
+  padding: 10px 12px;
+  border-radius: 12px;
+  outline: none;
+  font-size: 13px;
+}
+.api-input::placeholder { color:#808080; }
+.api-input:focus { border-color: #32cd32; }
+
+.api-btn {
+  background: #2a2a2a;
+  border: 1px solid #404040;
+  color: #e8e8e8;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.api-btn:hover { background:#404040; }
+.api-btn.danger:hover { border-color:#ff6666; }
+
+.api-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.api-status {
+  color: #808080;
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .api-row { flex-wrap: wrap; }
+  .api-btn { width: 100%; }
+}
 </style>
 <body>
     <!--Barra de Navegación Principal-->
@@ -813,19 +901,26 @@ body {
 
             <div class="input-area">
                 <div class="input-container">
-                    <div class="api-key-bar" style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-  <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini aquí"
-         style="flex:1; padding:10px 12px; border-radius:10px; border:1px solid #404040; background:#121212; color:#e8e8e8; outline:none;" />
-  <button id="saveApiKeyBtn" type="button"
-          style="padding:10px 14px; border-radius:10px; border:1px solid #404040; background:#2a2a2a; color:#e8e8e8; cursor:pointer;">
-    Guardar
-  </button>
-  <button id="toggleApiKeyBtn" type="button"
-          style="padding:10px 14px; border-radius:10px; border:1px solid #404040; background:#2a2a2a; color:#e8e8e8; cursor:pointer;">
-    Ver
-  </button>
-</div>
-<div id="apiKeyStatus" style="font-size:12px; color:#808080; margin-bottom:8px;"></div>
+                   <!-- Config API (colapsable) -->
+                    <div class="api-config">
+                      <button type="button" id="apiToggle" class="api-toggle" aria-expanded="false">
+                        ⚙️ Config
+                      </button>
+                    
+                      <div id="apiPanel" class="api-panel hidden">
+                        <div class="api-row">
+                          <input id="apiKeyInput" type="password" placeholder="Pega tu API key de Gemini" class="api-input" />
+                          <button id="saveApiKeyBtn" type="button" class="api-btn">Guardar</button>
+                          <button id="toggleApiKeyBtn" type="button" class="api-btn">Ver</button>
+                        </div>
+                    
+                        <div class="api-meta">
+                          <span id="apiKeyStatus" class="api-status">API key: no configurada</span>
+                          <span id="modelStatus" class="api-status">Modelo: (sin seleccionar)</span>
+                          <button id="clearApiKeyBtn" type="button" class="api-btn danger">Borrar</button>
+                        </div>
+                      </div>
+                    </div>
                     <div class="gradient-border"></div>
                     <form id="chatForm" class="input-wrapper">
                         <!--<button type="button" class="emoji-btn">😊</button>-->
@@ -846,15 +941,12 @@ body {
 
    <script>
   // =========================
-  // CONFIG
-  // =========================
-  // Modelo (si te falla, cambia a "models/gemini-1.5-pro" o lista modelos)
-  const GEMINI_MODEL = "models/gemini-1.5-flash";
-
   // Storage keys
-  const LS_API_KEY = "bb_gemini_api_key_v1";
-  const LS_ALL_CHATS = "bb_all_chats_v1";
-  const LS_ACTIVE_ID = "bb_active_chat_id_v1";
+  // =========================
+  const LS_API_KEY = "bb_gemini_api_key_v2";
+  const LS_MODEL = "bb_gemini_model_v2";
+  const LS_ALL_CHATS = "bb_all_chats_v2";
+  const LS_ACTIVE_ID = "bb_active_chat_id_v2";
 
   // =========================
   // Elements
@@ -870,11 +962,15 @@ body {
   const welcomeScreen = document.getElementById("welcomeScreen");
   const chatHistory = document.getElementById("chatHistory");
 
-  // API key UI
+  // API config elements (deben existir en tu HTML)
+  const apiToggle = document.getElementById("apiToggle");
+  const apiPanel = document.getElementById("apiPanel");
   const apiKeyInput = document.getElementById("apiKeyInput");
   const saveApiKeyBtn = document.getElementById("saveApiKeyBtn");
   const toggleApiKeyBtn = document.getElementById("toggleApiKeyBtn");
+  const clearApiKeyBtn = document.getElementById("clearApiKeyBtn");
   const apiKeyStatus = document.getElementById("apiKeyStatus");
+  const modelStatus = document.getElementById("modelStatus");
 
   // =========================
   // State
@@ -883,9 +979,9 @@ body {
   let currentChatId = loadActiveChatId() || null;
 
   // =========================
-  // Helpers
+  // Basic helpers
   // =========================
-  function escapeHtmlToSafeHtml(str) {
+  function escapeHtml(str) {
     return String(str)
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
@@ -916,7 +1012,7 @@ body {
 
     const contentDiv = document.createElement("div");
     contentDiv.className = "message-content";
-    contentDiv.innerHTML = escapeHtmlToSafeHtml(content).replace(/\n/g, "<br>");
+    contentDiv.innerHTML = escapeHtml(content).replace(/\n/g, "<br>");
 
     messageDiv.appendChild(label);
     messageDiv.appendChild(contentDiv);
@@ -928,7 +1024,8 @@ body {
     const loadingDiv = document.createElement("div");
     loadingDiv.className = "message assistant";
     loadingDiv.id = id;
-    loadingDiv.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+    loadingDiv.innerHTML =
+      '<div class="loading"><span></span><span></span><span></span></div>';
     messagesDiv.appendChild(loadingDiv);
     scrollToBottom();
   }
@@ -939,34 +1036,74 @@ body {
   }
 
   // =========================
-  // API Key storage + UI
+  // Storage: API key + model
   // =========================
   function getApiKey() {
     return (localStorage.getItem(LS_API_KEY) || "").trim();
   }
-
   function setApiKey(key) {
     const k = String(key || "").trim();
-    if (!k) {
-      localStorage.removeItem(LS_API_KEY);
-      return;
-    }
-    localStorage.setItem(LS_API_KEY, k);
+    if (!k) localStorage.removeItem(LS_API_KEY);
+    else localStorage.setItem(LS_API_KEY, k);
+  }
+  function getSavedModel() {
+    return (localStorage.getItem(LS_MODEL) || "").trim();
+  }
+  function setSavedModel(modelName) {
+    const m = String(modelName || "").trim();
+    if (!m) localStorage.removeItem(LS_MODEL);
+    else localStorage.setItem(LS_MODEL, m);
   }
 
-  function updateApiKeyStatus() {
+  function setApiStatus(msg, ok) {
+    apiKeyStatus.textContent = msg;
+    apiKeyStatus.style.color = ok ? "#b7ffb7" : "#ffb4b4";
+  }
+  function setModelStatus(msg, ok) {
+    modelStatus.textContent = msg;
+    modelStatus.style.color = ok ? "#b7ffb7" : "#ffb4b4";
+  }
+
+  function initApiUi() {
     const k = getApiKey();
-    if (!k) {
-      apiKeyStatus.textContent = "API key: no configurada (pégala y presiona Guardar).";
-      apiKeyStatus.style.color = "#ffb4b4";
-      return;
+    const m = getSavedModel();
+    if (k) setApiStatus("API key: configurada ✅", true);
+    else setApiStatus("API key: no configurada", false);
+
+    if (m) setModelStatus(`Modelo: ${m}`, true);
+    else setModelStatus("Modelo: (sin seleccionar)", false);
+  }
+
+  // Lista modelos y elige uno compatible con generateContent
+  async function pickWorkingModel(apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+      apiKey
+    )}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        data?.error?.message || `No pude listar modelos (HTTP ${res.status})`
+      );
     }
-    apiKeyStatus.textContent = "API key: configurada ✅";
-    apiKeyStatus.style.color = "#b7ffb7";
+
+    const models = data.models || [];
+    const found = models.find((m) =>
+      (m.supportedGenerationMethods || []).includes("generateContent")
+    );
+
+    if (!found) {
+      throw new Error(
+        "Tu API key no tiene modelos compatibles con generateContent."
+      );
+    }
+
+    return found.name; // ej: "models/gemini-1.5-pro"
   }
 
   // =========================
-  // Chats storage
+  // Storage: chats
   // =========================
   function loadAllChats() {
     try {
@@ -1028,6 +1165,7 @@ body {
     allChats.unshift(newChat);
     saveAllChats();
     renderSidebar();
+
     return id;
   }
 
@@ -1057,11 +1195,14 @@ body {
   }
 
   // =========================
-  // Gemini API
+  // Gemini call
   // =========================
   async function geminiGenerate(promptText, contextMessages) {
     const apiKey = getApiKey();
-    if (!apiKey) throw new Error("No has configurado tu API key (arriba).");
+    const model = getSavedModel();
+
+    if (!apiKey) throw new Error("No has configurado tu API key (⚙️ Config).");
+    if (!model) throw new Error("No hay modelo. Abre ⚙️ Config y guarda tu key.");
 
     const contents = [];
     for (const m of contextMessages) {
@@ -1073,66 +1214,104 @@ body {
     }
     contents.push({ role: "user", parts: [{ text: promptText }] });
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${encodeURIComponent(
+      apiKey
+    )}`;
 
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 512 }
-      })
+        generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+      }),
     });
 
     const data = await res.json();
-
     if (!res.ok) {
-      const msg = data?.error?.message || `Error HTTP ${res.status}`;
-      throw new Error(msg);
+      throw new Error(data?.error?.message || `Error HTTP ${res.status}`);
     }
 
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sin respuesta del modelo.";
-  }
-
-  // (Opcional) listar modelos disponibles
-  async function listModelsToConsole() {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      console.warn("Primero guarda una API key.");
-      return;
-    }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    console.log("MODELOS DISPONIBLES:");
-    (data.models || []).forEach(m => console.log(m.name, m.supportedGenerationMethods));
+    return (
+      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Sin respuesta del modelo."
+    );
   }
 
   // =========================
   // Events
   // =========================
+  // Sidebar toggle
   toggleSidebar.addEventListener("click", () => sidebar.classList.toggle("hidden"));
 
-  // auto-resize textarea
+  // Auto-resize textarea
   promptInput.addEventListener("input", function () {
     this.style.height = "auto";
     this.style.height = Math.min(this.scrollHeight, 200) + "px";
   });
 
-  // Nuevo chat
+  // New chat button
   newChatBtn.addEventListener("click", () => startNewChat());
 
-  // Guardar key
-  saveApiKeyBtn.addEventListener("click", () => {
-    setApiKey(apiKeyInput.value);
-    apiKeyInput.value = "";
-    updateApiKeyStatus();
+  // Close sidebar on mobile when click outside
+  document.addEventListener("click", (e) => {
+    if (window.innerWidth <= 768) {
+      if (
+        !sidebar.contains(e.target) &&
+        !toggleSidebar.contains(e.target) &&
+        !sidebar.classList.contains("hidden")
+      ) {
+        sidebar.classList.add("hidden");
+      }
+    }
   });
 
-  // Ver/ocultar key
+  // API panel toggle
+  apiToggle.addEventListener("click", () => {
+    const hidden = apiPanel.classList.toggle("hidden");
+    apiToggle.setAttribute("aria-expanded", hidden ? "false" : "true");
+  });
+
+  // Show/Hide key
   toggleApiKeyBtn.addEventListener("click", () => {
     apiKeyInput.type = apiKeyInput.type === "password" ? "text" : "password";
     toggleApiKeyBtn.textContent = apiKeyInput.type === "password" ? "Ver" : "Ocultar";
+  });
+
+  // Clear key
+  clearApiKeyBtn.addEventListener("click", () => {
+    setApiKey("");
+    setSavedModel("");
+    apiKeyInput.value = "";
+    setApiStatus("API key: no configurada", false);
+    setModelStatus("Modelo: (sin seleccionar)", false);
+  });
+
+  // Save key + auto-pick model
+  saveApiKeyBtn.addEventListener("click", async () => {
+    const k = apiKeyInput.value.trim();
+    if (!k) return;
+
+    setApiStatus("Validando API key...", false);
+    setModelStatus("Buscando modelo compatible...", false);
+
+    try {
+      setApiKey(k);
+      const model = await pickWorkingModel(k);
+      setSavedModel(model);
+
+      apiKeyInput.value = "";
+      apiKeyInput.type = "password";
+      toggleApiKeyBtn.textContent = "Ver";
+
+      setApiStatus("API key: configurada ✅", true);
+      setModelStatus(`Modelo: ${model}`, true);
+    } catch (e) {
+      setApiKey("");
+      setSavedModel("");
+      setApiStatus("API key inválida o sin acceso ❌", false);
+      setModelStatus(e.message || "No se pudo seleccionar modelo", false);
+    }
   });
 
   // Submit chat
@@ -1146,6 +1325,7 @@ body {
     const id = ensureCurrentChat();
     const chat = getChatById(id);
 
+    // Save user message
     chat.messages.push({ role: "user", content: prompt });
     setChatTitleFromFirstUserMessage(chat);
     saveAllChats();
@@ -1153,6 +1333,7 @@ body {
 
     addMessage("user", prompt);
 
+    // Disable input
     promptInput.value = "";
     promptInput.style.height = "auto";
     sendBtn.disabled = true;
@@ -1167,6 +1348,7 @@ body {
 
       removeLoadingMessage(loadingId);
 
+      // Save assistant message
       chat.messages.push({ role: "assistant", content: reply });
       saveAllChats();
 
@@ -1181,22 +1363,11 @@ body {
     }
   });
 
-  // Click fuera (móvil)
-  document.addEventListener("click", (e) => {
-    if (window.innerWidth <= 768) {
-      if (!sidebar.contains(e.target) && !toggleSidebar.contains(e.target) && !sidebar.classList.contains("hidden")) {
-        sidebar.classList.add("hidden");
-      }
-    }
-  });
-
   // =========================
   // Init
   // =========================
   window.addEventListener("load", () => {
-    // Cargar estado UI api key
-    updateApiKeyStatus();
-
+    initApiUi();
     renderSidebar();
 
     if (currentChatId) {
@@ -1207,9 +1378,6 @@ body {
       startNewChat();
     }
 
-    // Si quieres ver modelos en consola, descomenta:
-    // listModelsToConsole();
-
     if (window.innerWidth <= 768) sidebar.classList.add("hidden");
     promptInput.focus();
   });
@@ -1218,6 +1386,7 @@ body {
 
 
 </html>
+
 
 
 
